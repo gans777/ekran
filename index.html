@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<title> zx</title>
+	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css">
+	<style>
+		body { padding: 30px;
+		 }
+		input { border: 1px solid green;
+                		 }
+
+		form { padding: 30px;
+
+               border-radius:15px;
+               border:2px solid orange;
+               width:40em;
+		 }
+		 
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="row justify-content-center align-items-center">
+	<form action="">
+		<input type="text"> 
+		<button>ввод</button>
+		</form>
+	</div>
+    </div>
+	<script src="/socket.io/socket.io.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+<script>
+	$(function(){
+		// Включаем socket.io и отслеживаем все подключения
+			var socket = io.connect();
+
+			$("button").click(function(event){
+                event.preventDefault();
+                socket.emit('send mess',$("input").val());
+                 $("input").val('');
+			});
+	});
+</script>
+</body>
+</html>
