@@ -19,7 +19,9 @@ var server=require('http').createServer(app);
 var io=require('socket.io').listen(server);
 
 
-server.listen(3000);
+server.listen(3000, '192.168.10.182', function () {
+    console.log('Server start')
+});
 
 app.get('/', function(request,respons){
 
@@ -43,7 +45,7 @@ var count=0; // счетчик сокет-соединений - практич�
 // Массив со всеми подключениями
 var connections = [];
 
-console.log(' сервер node.js включен')
+console.log(' сервер node.js включен_');
 
 
 io.sockets.on('connection', function (socket) {
@@ -51,6 +53,7 @@ io.sockets.on('connection', function (socket) {
 
 	console.log("Успешное соединение нового сокета"+count);
     socket["id_socket"]=count; // в объекте socket создается новая ячейка для счетчика
+    socket.emit('i_new_connect', count);
 
 
 
@@ -70,7 +73,8 @@ io.sockets.on('connection', function (socket) {
 
 	connections.push(socket);
 
-	socket.on('id_status_reload',function () {
+	socket.on('id_status_reload',function (data) {
+	    console.log(data);
         var zx=connections.length;
         console.log('количество соединений '+zx);
 
@@ -79,12 +83,14 @@ io.sockets.on('connection', function (socket) {
             if (typeof element["id_user"] === 'undefined') {
 
               //  ячейка в объекте socket с id пользователя
-                      console.log('переменная неопределена '+element["id_user"]);
+                     // console.log('переменная неопределена '+element["id_user"]);
 
             } else {
 
                 console.log('переменная определена '+element["id_user"]);
              var   data= element["id_user"];// создается ячейка в объекте socket с id пользователя
+
+                console.log('переменная определена '+element["id_user"]);
 
                 io.sockets.emit('id_connected_to', data);
             }
@@ -128,16 +134,78 @@ io.sockets.on('connection', function (socket) {
       socket.emit('session_from_index',GLOBAL._sess);   //передает на read.php id-сессии
   });
 
+  socket.on('terminal_online',function(data){ // проверка связи с терминалом(отдача\прием сообщений для проверки)
+      io.sockets.emit('online_on','online');
+  });
 
 
 	socket.on('send mess', function(data){   //  data - это массив из формы, где data[1]-id , data[0]-сообщение
-		
 
+        console.log("(read_now)ID POINT="+data[1]);
+        console.log("MESS="+data[0]);
 
          io.sockets.emit('read_now', data);
 	});
 
 
+	
+	socket.on('connect_card', function(data){  // произошло открытие корзины
+
+	    console.log('необходимый id ларька' + data);
+/////////////////////////////////
+
+        var Curl = require( 'node-libcurl' ).Curl;
+
+        var curl = new Curl();
+
+        curl.setOpt( Curl.option.URL, 'http://larek-online.ru/common/ajax/ajax-reguest.php?id_point=25&act_label=ask_time_work' );
+        curl.setOpt( 'FOLLOWLOCATION', true );
+
+        curl.on( 'end', function( statusCode, body, headers ) {
+
+            //console.info( statusCode );
+            //console.info( '---' );
+            //console.info( body.length );
+            console.info('я тело ответа' + body );
+            if (Number(body)==1) {console.log('по расписанию ларек ОТКРЫТ');}
+            if (Number(body)==2) {console.log('по расписанию ларек ЗАКРЫТ');}
+            console.log('значение body внутри curl.on' + GLOBAL._body_open_close);
+           // console.info( headers );
+            //console.info( '---' );
+            //console.info( this.getInfo( Curl.info.TOTAL_TIME ) );
+
+            this.close();
+        });
+
+        curl.on( 'error', function( err, curlErrorCode ) {
+
+            console.error( err.message );
+            console.error( '---' );
+            console.error( curlErrorCode );
+
+            this.close();
+
+        });
+
+        curl.perform();
+
+        ////////////////////////////////////////
+        console.log('значение body с наружи ' + GLOBAL._body_open_close);
+        //body_open_close
+
+        connections.some(function(element){ // при первом совпадении обход прерывается
+
+          if  (element["id_user"] == data) {
+
+              console.log('покупатель с корзиной подключен и Ларек '+ data + 'работает');
+              
+              io.sockets.emit('lar_online', data);  // надо чтобы информация ушла строго на этот сокет, а не рупором по всем!!!!!!!!!!
+              return;
+          }
+            }
+     
+        );
+    });
 
 	 }); // end io.sockets.on
 
