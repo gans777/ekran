@@ -58,13 +58,13 @@ io.sockets.on('connection', function (socket) {
 
 
     socket.on('id_connected',function(data){ // слушает подключение id со страницы reception.php
-        // var online_connect=[data,count];
 
         console.log('подключился id='+data+'c номером соединения'+count);
 
         socket["id_user"]=data;// создается ячейка в объекте socket с id пользователя
 
         io.sockets.emit('id_connected_to', data);
+        io.sockets.emit('break_point_status_flag_to_terminal', data); // проверка стоит ли флаг перерыва(тоесть перевызываются функции, проверяющие в terminal.php check перерыва продавца)
 
     });
 
@@ -93,6 +93,7 @@ io.sockets.on('connection', function (socket) {
                 console.log('переменная определена '+element["id_user"]);
 
                 io.sockets.emit('id_connected_to', data);
+
             }
                     });
 
@@ -101,7 +102,7 @@ io.sockets.on('connection', function (socket) {
 
 
 
-     socket.emit('my_socket', socket["id_socket"]); // передается порядковый от включения номер сокета (читает его read.php -- если там не нужен, то можно удалить)
+    // socket.emit('my_socket', socket["id_socket"]); // передается порядковый от включения номер сокета (читает его read.php -- если там не нужен, то можно удалить)
 
     /*
      socket.on('session_on', function (data) {  // слушает session_on -зачем???   удалить???
@@ -151,25 +152,30 @@ io.sockets.on('connection', function (socket) {
 	
 	socket.on('connect_card', function(data){  // произошло открытие корзины
 
-	    console.log('необходимый id ларька' + data);
+	    console.log('необходимый id ларька ' + data);
+        io.sockets.emit('break_point_status_flag_to_terminal', data); // проверка стоит ли флаг перерыва(тоесть перевызываются функции, проверяющие в terminal.php check перерыва продавца)
 /////////////////////////////////
-
         var Curl = require( 'node-libcurl' ).Curl;
 
         var curl = new Curl();
 
-        curl.setOpt( Curl.option.URL, 'http://larek-online.ru/common/ajax/ajax-reguest.php?id_point=25&act_label=ask_time_work' );
+        curl.setOpt( Curl.option.URL, 'http://larek-online.ru/common/ajax/ajax-reguest.php?id_point='+data+'&act_label=ask_time_work' );
         curl.setOpt( 'FOLLOWLOCATION', true );
 
-        curl.on( 'end', function( statusCode, body, headers ) {
+        curl.on( 'end', function( statusCode, body, headers, data ) {
 
             //console.info( statusCode );
             //console.info( '---' );
             //console.info( body.length );
-            console.info('я тело ответа' + body );
-            if (Number(body)==1) {console.log('по расписанию ларек ОТКРЫТ');}
-            if (Number(body)==2) {console.log('по расписанию ларек ЗАКРЫТ');}
-            console.log('значение body внутри curl.on' + GLOBAL._body_open_close);
+            //console.info('я тело ответа' + body );
+            if (Number(body)==1) {console.log('по расписанию ларек ОТКРЫТ');
+                io.sockets.emit ('lar_open', 'this point open');
+            }
+
+            if (Number(body)==2) {console.log('по расписанию ларек ЗАКРЫТ');
+            io.sockets.emit ('lar_close', 'this point close');
+            }
+            
            // console.info( headers );
             //console.info( '---' );
             //console.info( this.getInfo( Curl.info.TOTAL_TIME ) );
@@ -188,24 +194,38 @@ io.sockets.on('connection', function (socket) {
         });
 
         curl.perform();
-
         ////////////////////////////////////////
-        console.log('значение body с наружи ' + GLOBAL._body_open_close);
-        //body_open_close
 
+        var flag_some = 2;
         connections.some(function(element){ // при первом совпадении обход прерывается
 
           if  (element["id_user"] == data) {
 
-              console.log('покупатель с корзиной подключен и Ларек '+ data + 'работает');
+              console.log('покупатель с корзиной подключен и продавец '+ data + 'online');
               
-              io.sockets.emit('lar_online', data);  // надо чтобы информация ушла строго на этот сокет, а не рупором по всем!!!!!!!!!!
+              io.sockets.emit('seller_online', data);  // надо бы чтобы информация ушла строго на этот сокет, а не рупором по всем!!!!!!!!!!
+              flag_some = 1;
               return;
-          }
+          } 
             }
-     
+   
         );
+        if (flag_some ==2) {
+            io.sockets.emit('id_connected_to_off', data);
+        }
     });
 
+	socket.on('break_point', function(data){
+	    console.log(data + ' продавец пошел на перерыв');
+	    io.sockets.emit('break_point_to',data);
+    });
+
+    socket.on('break_point_off', function(data){
+        console.log(data + ' продавец вернулся с перерыва');
+        io.sockets.emit('break_point_to_back',data);
+    });
+
+
+	
 	 }); // end io.sockets.on
 
