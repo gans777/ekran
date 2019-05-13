@@ -16,6 +16,9 @@ app.use(session({
 }));
 
 var server=require('http').createServer(app);
+/*var server_https = require('http');*/
+var fs = require( "fs" );   // для чтения ключевых файлов
+
 var io=require('socket.io').listen(server);
 
 
@@ -149,7 +152,7 @@ io.sockets.on('connection', function (socket) {
 	});
 
 
-	
+
 	socket.on('connect_card', function(data){  // произошло открытие корзины
 
 	    console.log('необходимый id ларька ' + data);
@@ -175,7 +178,7 @@ io.sockets.on('connection', function (socket) {
             if (Number(body)==2) {console.log('по расписанию ларек ЗАКРЫТ');
             io.sockets.emit ('lar_close', 'this point close');
             }
-            
+
            // console.info( headers );
             //console.info( '---' );
             //console.info( this.getInfo( Curl.info.TOTAL_TIME ) );
@@ -202,13 +205,13 @@ io.sockets.on('connection', function (socket) {
           if  (element["id_user"] == data) {
 
               console.log('покупатель с корзиной подключен и продавец '+ data + 'online');
-              
+
               io.sockets.emit('seller_online', data);  // надо бы чтобы информация ушла строго на этот сокет, а не рупором по всем!!!!!!!!!!
               flag_some = 1;
               return;
-          } 
+          }
             }
-   
+
         );
         if (flag_some ==2) {
             io.sockets.emit('id_connected_to_off', data);
@@ -226,6 +229,30 @@ io.sockets.on('connection', function (socket) {
     });
 
 
-	
+    // принятие сообщения о принятии продавцом зaказа с terminal.js
+    socket.on('order_apply',function(data, order_number){
+        console.log('заказ '+ data + ' принят ' + 'номер заказа='+ order_number);
+        io.sockets.emit('order_apply_to_client', data, order_number);
+    });
+
+    // принятие сообщения о выполнении продавцом зaказа с terminal.js
+    socket.on('order_ready',function(data, order_number){
+        console.log('заказ '+ data + ' готов'+ ' номер заказа='+ order_number);
+        io.sockets.emit('order_ready_to_client',data, order_number);
+    });
+
+
+    // принятие сообщения о выданном продавцом зaказе с terminal.js
+    socket.on('order_issue',function(data, order_number){
+        console.log('заказ '+ data + ' выдан');
+        io.sockets.emit('order_issue_to_client',data, order_number);
+    });
+
+    // принятие сообщения о отмене продавцом зaказа с terminal.js
+    socket.on('order_cancel_complete',function(data, order_number){
+        console.log('заказ '+ data + ' отменен; доп номер ' + order_number);
+        io.sockets.emit('order_cancel_complete_to_client',data, order_number);
+    });
+
 	 }); // end io.sockets.on
 
